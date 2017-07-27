@@ -1,0 +1,54 @@
+<html>
+
+<head>
+    <script src="module.js" type="text/javascript"></script>
+</head>
+
+<body>
+    Check the console.
+</body>
+<script>
+    let coolbeans = Module.cwrap('coolbeans', 'number', ['number', 'string', 'array', 'number'])
+
+    // This callback will be called when the lib is ready for prime time.
+    Module['onRuntimeInitialized'] = function () {
+        // emscripten assumes that the "array" signature type is an unsigned int8, which ranges from 0 to 255. 
+        const defaultArray = [0, 1, 127, 255]
+        //this one will overflow to 3
+        defaultArray[4] = 256 + 3
+        // this one will be floored
+        defaultArray[5] = 42.9
+        // this one will be converted to zero
+        defaultArray[6] = 'strings'
+        // this one will be converted to zero as well
+        defaultArray[7] = {}
+
+        // other types of arrays can be used, but we need to write them ourselves in the linear memory afaik
+        function array32ToPtr(array) {
+            // Gets a pointer to an address on the linear memory with enough space for our elements.
+            // The default malloc unit is byte not bit, eg 10 elements * 32 bit == 10 elements * 4 bytes
+            // the return value is a byte offset in linear memory with enough space
+            const ptr = Module._malloc(array.length * 4)
+            // HEAP32.set(array, address) copies array in the linear memory starting at offset address
+            // HEAP32 is the heap viewed and addressed by groups of 32 bits.
+            // So if the memory contains 64 bits, HEAP32 will have only 2 entries, HEAP16 will have 4 etc.
+            // That explains why we have to divide by 4 the address as we are jumping 32 bits per 32 bits in the HEAP32, and our pointers is in bytes offsets.
+            Module.HEAP32.set(array, ptr / 4)
+            return ptr
+        }
+
+        const typedArrayPointer = array32ToPtr(new Int32Array([0, 256, 65000]));
+
+        console.log(
+            coolbeans(
+                27,
+                "hello world",
+                defaultArray,
+                typedArrayPointer
+            )
+        )
+    }
+
+</script>
+
+</html>
