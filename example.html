@@ -8,9 +8,17 @@
     Check the console.
 </body>
 <script>
+    // Module is an object defined by module.js / emscripten.
+
+    // The "cwrap" method exposes a function coming from C to your js program.
+    // we need to have a fixed signature, as C is typed and expects parameters to be perfectly organized in a certain way.
+    // 'coolbeans' is the name of the C function
+    // 'number' is the return type of coolbeans, it assumed to be an unsigned int8
+    // the rest is an array of arguments of coolbeans.
     let coolbeans = Module.cwrap('coolbeans', 'number', ['number', 'string', 'array', 'number'])
 
-    // This callback will be called when the lib is ready for prime time.
+    // Wasm engine is asynchronously started in module.js. In particular, the module.wasm needs to be downloaded, parsed, and a few other stuff needs to set before being able to use any wasm related code.
+    // We can register a callback 'onRuntimeInitialized' on Module which will be triggered when the wasm engine is ready to be used.
     Module['onRuntimeInitialized'] = function () {
         // emscripten assumes that the "array" signature type is an unsigned int8, which ranges from 0 to 255. 
         const defaultArray = [0, 1, 127, 255]
@@ -39,7 +47,8 @@
 
         const typedArrayPointer = array32ToPtr(new Int32Array([0, 256, 65000]));
 
-        console.log(
+
+        console.log('Return value of coolbeans is',
             coolbeans(
                 27,
                 "hello world",
