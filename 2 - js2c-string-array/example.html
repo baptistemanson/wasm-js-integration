@@ -1,0 +1,53 @@
+<html>
+
+<head>
+    <script src="module.js" type="text/javascript"></script>
+</head>
+
+<body>
+    Check the console.
+</body>
+<script>
+    let coolbeans = Module.cwrap('coolbeans', 'number', ['number', 'number'])
+
+
+    Module['onRuntimeInitialized'] = function () {
+        // other types of arrays can be used, but we need to write them ourselves in the linear memory afaik
+        function copyStringToHeap(str) {
+            var ret = 0;
+            if (str !== null && str !== undefined && str !== 0) { // null string
+                var len = (str.length * 4) + 1;
+                ret = Runtime.stackAlloc(len);
+                stringToUTF8(str, ret, len);
+            }
+            return ret;
+        }
+
+        // other types of arrays can be used, but we need to write them ourselves in the linear memory afaik
+        function array32ToPtr(array) {
+            // Gets a pointer to an address on the linear memory with enough space for our elements.
+            // The default malloc unit is byte not bit, eg 10 elements * 32 bit == 10 elements * 4 bytes
+            // the return value is a byte offset in linear memory with enough space
+            const ptr = Runtime.stackAlloc(array.length * 4)
+            // HEAP32.set(array, address) copies array in the linear memory starting at offset address
+            // HEAP32 is the heap viewed and addressed by groups of 32 bits.
+            // So if the memory contains 64 bits, HEAP32 will have only 2 entries, HEAP16 will have 4 etc.
+            // That explains why we have to divide by 4 the address as we are jumping 32 bits per 32 bits in the HEAP32, and our pointers is in bytes offsets.
+            Module.HEAP32.set(array, ptr / 4)
+            return ptr
+        }
+
+        const addresses = ['a', 'bb', 'ccc', 'dddd'].map(e => copyStringToHeap(e));
+
+
+        console.log('Return value of coolbeans is',
+            coolbeans(
+                array32ToPtr(addresses),
+                addresses.length
+            )
+        )
+    }
+
+</script>
+
+</html>
